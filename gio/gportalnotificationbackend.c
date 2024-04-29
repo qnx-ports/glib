@@ -213,6 +213,7 @@ serialize_category (GNotification *notification)
 
 static GVariant *
 serialize_notification (GNotification *notification,
+                        const gchar   *desktop_file_id,
                         GUnixFDList   *fd_list)
 {
   GVariantBuilder builder;
@@ -270,6 +271,8 @@ serialize_notification (GNotification *notification,
   if ((buttons = serialize_buttons (notification)))
     g_variant_builder_add (&builder, "{sv}", "buttons", buttons);
 
+  g_variant_builder_add (&builder, "{sv}", "desktop-file-id", g_variant_new_string (desktop_file_id));
+
   return g_variant_builder_end (&builder);
 }
 
@@ -285,8 +288,10 @@ g_portal_notification_backend_send_notification (GNotificationBackend *backend,
                                                  GNotification        *notification)
 {
   g_autoptr(GUnixFDList) fd_list = NULL;
+  g_autofree gchar *desktop_file_id = NULL;
 
   fd_list = g_unix_fd_list_new ();
+  desktop_file_id = g_strconcat (g_application_get_application_id (backend->application), ".desktop", NULL);
 
   g_dbus_connection_call_with_unix_fd_list (backend->dbus_connection,
                                             "org.freedesktop.portal.Desktop",
@@ -295,7 +300,7 @@ g_portal_notification_backend_send_notification (GNotificationBackend *backend,
                                             "AddNotification",
                                             g_variant_new ("(s@a{sv})",
                                                            id,
-                                                           serialize_notification (notification, fd_list)),
+                                                           serialize_notification (notification, desktop_file_id, fd_list)),
                                             G_VARIANT_TYPE_UNIT,
                                             G_DBUS_CALL_FLAGS_NONE, -1,
                                             fd_list,
