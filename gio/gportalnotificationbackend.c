@@ -22,6 +22,11 @@
 #include "config.h"
 #include "gnotificationbackend.h"
 
+#include <fcntl.h>
+
+#include <glib.h>
+#include <glib/gstdio.h>
+
 #include "giomodule-priv.h"
 #include "gioenumtypes.h"
 #include "gicon.h"
@@ -29,6 +34,7 @@
 #include "gapplication.h"
 #include "gnotification-private.h"
 #include "gportalsupport.h"
+#include "gunixfdlist.h"
 
 #define G_TYPE_PORTAL_NOTIFICATION_BACKEND  (g_portal_notification_backend_get_type ())
 #define G_PORTAL_NOTIFICATION_BACKEND(o)    (G_TYPE_CHECK_INSTANCE_CAST ((o), G_TYPE_PORTAL_NOTIFICATION_BACKEND, GPortalNotificationBackend))
@@ -47,6 +53,35 @@ G_DEFINE_TYPE_WITH_CODE (GPortalNotificationBackend, g_portal_notification_backe
   _g_io_modules_ensure_extension_points_registered ();
   g_io_extension_point_implement (G_NOTIFICATION_BACKEND_EXTENSION_POINT_NAME,
                                  g_define_type_id, "portal", 110))
+
+static GVariant *
+adjust_serialized_media (GVariant    *serialized_media,
+                         GUnixFDList *fd_list)
+{
+  g_autoptr(GVariant) value = NULL;
+  g_autoptr(GFile) file = NULL;
+  const char *key = NULL;
+  g_autofree char *path = NULL;
+  g_autofd int fd = -1;
+  int fd_in = 0;
+
+  if (g_variant_is_of_type (serialized_media, G_VARIANT_TYPE("(sv)")))
+    g_variant_get (serialized_media, "(&sv)", &key, &value);
+
+  if (key && value && strcmp (key, "file") == 0 && g_variant_is_of_type (value, G_VARIANT_TYPE_STRING))
+    file = g_file_new_for_commandline_arg (g_variant_get_string (value, NULL));
+
+  /* Pass through everything that isn't a native GFile */
+  if (!G_IS_FILE (file) || !g_file_is_native (file))
+    return serialized_media;
+
+  path = g_file_get_path (file);
+  fd = g_open (path, O_RDONLY | O_CLOEXEC);
+
+  fd_in = g_unix_fd_list_append (fd_list, fd, NULL);
+
+  return g_variant_new ("(sv)", "file-descriptor", g_variant_new_handle (fd_in));
+}
 
 static GVariant *
 serialize_buttons (GNotification *notification)
@@ -97,7 +132,8 @@ serialize_priority (GNotification *notification)
 }
 
 static GVariant *
-serialize_notification (GNotification *notification)
+serialize_notification (GNotification *notification,
+                        GUnixFDList   *fd_list)
 {
   GVariantBuilder builder;
   const gchar *body;
@@ -118,7 +154,7 @@ serialize_notification (GNotification *notification)
       g_autoptr(GVariant) serialized_icon = NULL;
 
       if ((serialized_icon = g_icon_serialize (icon)))
-        g_variant_builder_add (&builder, "{sv}", "icon", serialized_icon);
+        g_variant_builder_add (&builder, "{sv}", "icon", adjust_serialized_media (serialized_icon, fd_list));;
     }
 
   g_variant_builder_add (&builder, "{sv}", "priority", serialize_priority (notification));
@@ -150,16 +186,22 @@ g_portal_notification_backend_send_notification (GNotificationBackend *backend,
                                                  const gchar          *id,
                                                  GNotification        *notification)
 {
-  g_dbus_connection_call (backend->dbus_connection,
-                          "org.freedesktop.portal.Desktop",
-                          "/org/freedesktop/portal/desktop",
-                          "org.freedesktop.portal.Notification",
-                          "AddNotification",
-                          g_variant_new ("(s@a{sv})",
-                                         id,
-                                         serialize_notification (notification)),
-                          G_VARIANT_TYPE_UNIT,
-                          G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+  g_autoptr(GUnixFDList) fd_list = NULL;
+
+  fd_list = g_unix_fd_list_new ();
+
+  g_dbus_connection_call_with_unix_fd_list (backend->dbus_connection,
+                                            "org.freedesktop.portal.Desktop",
+                                            "/org/freedesktop/portal/desktop",
+                                            "org.freedesktop.portal.Notification",
+                                            "AddNotification",
+                                            g_variant_new ("(s@a{sv})",
+                                                           id,
+                                                           serialize_notification (notification, fd_list)),
+                                            G_VARIANT_TYPE_UNIT,
+                                            G_DBUS_CALL_FLAGS_NONE, -1,
+                                            fd_list,
+                                            NULL, NULL, NULL);
 }
 
 static void
