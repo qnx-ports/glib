@@ -138,6 +138,7 @@ serialize_notification (GNotification *notification,
   GVariantBuilder builder;
   const gchar *body;
   GIcon *icon;
+  GVariant *sound = NULL;
   g_autofree gchar *default_action = NULL;
   g_autoptr(GVariant) default_action_target = NULL;
   GVariant *buttons = NULL;
@@ -156,6 +157,11 @@ serialize_notification (GNotification *notification,
       if ((serialized_icon = g_icon_serialize (icon)))
         g_variant_builder_add (&builder, "{sv}", "icon", adjust_serialized_media (serialized_icon, fd_list));;
     }
+
+  if ((sound = g_notification_get_sound (notification)))
+    g_variant_builder_add (&builder, "{sv}", "sound", adjust_serialized_media (sound, fd_list));
+  else
+    g_variant_builder_add (&builder, "{sv}", "sound", g_variant_new_string ("default"));
 
   g_variant_builder_add (&builder, "{sv}", "priority", serialize_priority (notification));
 
