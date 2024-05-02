@@ -47,6 +47,7 @@ guint                   g_notification_get_n_buttons                    (GNotifi
 void                    g_notification_get_button                       (GNotification  *notification,
                                                                          gint            index,
                                                                          gchar         **label,
+                                                                         gchar         **purpose,
                                                                          gchar         **action,
                                                                          GVariant      **target);
 
