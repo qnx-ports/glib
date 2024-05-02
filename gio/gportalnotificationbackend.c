@@ -169,6 +169,35 @@ serialize_display_hint (GNotification *notification)
 }
 
 static GVariant *
+serialize_category (GNotification *notification)
+{
+  const char *category;
+  const char *supported_categories[] = {
+    G_NOTIFICATION_CATEGORY_IM_MESSAGE,
+    G_NOTIFICATION_CATEGORY_ALARM_RINGING,
+    G_NOTIFICATION_CATEGORY_CALL_INCOMING,
+    G_NOTIFICATION_CATEGORY_CALL_OUTGOING,
+    G_NOTIFICATION_CATEGORY_CALL_MISSED,
+    G_NOTIFICATION_CATEGORY_WEATHER_WARNING_EXTREME,
+    G_NOTIFICATION_CATEGORY_CELLBROADCAST_DANGER_SEVERE,
+    G_NOTIFICATION_CATEGORY_CELLBROADCAST_AMBER_ALERT,
+    G_NOTIFICATION_CATEGORY_CELLBROADCAST_TEST,
+    G_NOTIFICATION_CATEGORY_OS_BATTERY_LOW,
+    G_NOTIFICATION_CATEGORY_BROWSER_WEB_NOTIFICATION,
+    NULL
+  };
+
+  category = g_notification_get_category (notification);
+
+  /* The portal fails if we give categories that aren't supported that
+   * don't start with the x-vendor prefix prefix */
+  if (category && (g_strv_contains (supported_categories, category) || g_str_has_prefix (category, "x-")))
+    return g_variant_new_string (category);
+
+  return NULL;
+}
+
+static GVariant *
 serialize_notification (GNotification *notification,
                         GUnixFDList   *fd_list)
 {
@@ -178,6 +207,7 @@ serialize_notification (GNotification *notification,
   GIcon *icon;
   GVariant *sound = NULL;
   GVariant *display_hint = NULL;
+  GVariant *category;
   g_autofree gchar *default_action = NULL;
   g_autoptr(GVariant) default_action_target = NULL;
   GVariant *buttons = NULL;
@@ -209,6 +239,9 @@ serialize_notification (GNotification *notification,
 
   if ((display_hint = serialize_display_hint (notification)))
     g_variant_builder_add (&builder, "{sv}", "display-hint", display_hint);
+
+  if ((category = serialize_category (notification)))
+    g_variant_builder_add (&builder, "{sv}", "category", category);
 
   if (g_notification_get_default_action (notification, &default_action, &default_action_target))
     {
