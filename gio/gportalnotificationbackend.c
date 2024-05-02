@@ -174,6 +174,7 @@ serialize_notification (GNotification *notification,
 {
   GVariantBuilder builder;
   const gchar *body;
+  const gchar *markup_body;
   GIcon *icon;
   GVariant *sound = NULL;
   GVariant *display_hint = NULL;
@@ -187,6 +188,9 @@ serialize_notification (GNotification *notification,
 
   if ((body = g_notification_get_body (notification)))
     g_variant_builder_add (&builder, "{sv}", "body", g_variant_new_string (body));
+
+  if ((markup_body = g_notification_get_markup_body (notification)))
+    g_variant_builder_add (&builder, "{sv}", "markup-body", g_variant_new_string (markup_body));
 
   if ((icon = g_notification_get_icon (notification)))
     {
