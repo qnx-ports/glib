@@ -170,6 +170,7 @@ struct _GNotification
   gchar *title;
   gchar *body;
   GIcon *icon;
+  GVariant *sound;
   GNotificationPriority priority;
   gchar *category;
   GPtrArray *buttons;
@@ -192,6 +193,7 @@ test_properties (void)
   GIcon *icon;
   const gchar * const *names;
   Button *b;
+  gchar *serialized_property;
 
   n = g_notification_new ("Test");
 
@@ -226,6 +228,25 @@ test_properties (void)
 
   g_assert_cmpstr (rn->default_action, ==, "app.action2");
   g_assert_cmpstr (g_variant_get_string (rn->default_action_target, NULL), ==, "target2");
+
+  GFile *file = g_file_new_for_uri ("file:///someuri");
+  g_notification_set_sound_from_file (n, file);
+  serialized_property = g_variant_print (rn->sound, TRUE);
+  g_assert_cmpstr (serialized_property, ==, "('file', <'file:///someuri'>)");
+  g_free (serialized_property);
+  g_object_unref (file);
+
+  GBytes *bytes = g_bytes_new_static (NULL, 0);
+  g_notification_set_sound_from_bytes (n, bytes);
+  serialized_property = g_variant_print (rn->sound, TRUE);
+  g_assert_cmpstr (serialized_property, ==, "('bytes', <@ay []>)");
+  g_free (serialized_property);
+  g_bytes_unref (bytes);
+
+  g_notification_set_silent (n, TRUE);
+  g_assert_cmpstr (g_variant_get_string (rn->sound, NULL), ==, "silent");
+  g_notification_set_silent (n, FALSE);
+  g_assert_null (rn->sound);
 
   g_object_unref (n);
 }

@@ -26,6 +26,7 @@
 #include "gicon.h"
 #include "gaction.h"
 #include "gioenumtypes.h"
+#include "gfile.h"
 
 /**
  * GNotification:
@@ -88,6 +89,7 @@ struct _GNotification
   gchar *title;
   gchar *body;
   GIcon *icon;
+  GVariant *sound;
   GNotificationPriority priority;
   gchar *category;
   GPtrArray *buttons;
@@ -134,6 +136,8 @@ g_notification_finalize (GObject *object)
 
   g_free (notification->title);
   g_free (notification->body);
+  if (notification->sound)
+    g_variant_unref (notification->sound);
   g_free (notification->category);
   g_free (notification->default_action);
   if (notification->default_action_target)
@@ -301,6 +305,106 @@ g_notification_set_icon (GNotification *notification,
     g_object_unref (notification->icon);
 
   notification->icon = g_object_ref (icon);
+}
+
+/*< private >
+ * g_notification_get_sound:
+ * @notification: a #GNotification
+ *
+ * Gets the sound currently set on @notification.
+ *
+ * Returns: (transfer none): the sound associated with @notification
+ *
+ * Since: 2.82
+ */
+GVariant *
+g_notification_get_sound (GNotification *notification)
+{
+  g_return_val_if_fail (G_IS_NOTIFICATION (notification), NULL);
+
+  return notification->sound;
+}
+
+/**
+ * g_notification_set_sound_from_file:
+ * @notification: a #GNotification
+ * @file: (nullable): A local sound file in the format ogg/opus, ogg/vorbis or wav/pcm, or %NULL for the default sound
+ *
+ * Sets the sound that will be played when @notification is shown
+ *
+ * Since: 2.82
+ */
+void
+g_notification_set_sound_from_file (GNotification *notification,
+                                    GFile         *file)
+{
+  GVariant *sound;
+
+  g_return_if_fail (G_IS_NOTIFICATION (notification));
+
+  if (notification->sound)
+    g_clear_pointer (&notification->sound, g_variant_unref);
+
+  if (file == NULL)
+    return;
+
+  sound = g_variant_new ("(sv)", "file", g_variant_new_take_string (g_file_get_uri (file)));
+
+  notification->sound = g_variant_ref_sink (sound);
+}
+
+/**
+ * g_notification_set_sound_from_bytes:
+ * @notification: a #GNotification
+ * @bytes: (nullable): #GBytes containing a sound in the format ogg/opus, ogg/vorbis or wav/pcm or %NULL for the default sound
+ *
+ * Sets the sound that will be played when @notification is shown
+ *
+ * Since: 2.82
+ */
+void
+g_notification_set_sound_from_bytes (GNotification *notification,
+                                     GBytes        *bytes)
+{
+  GVariant *sound;
+
+  g_return_if_fail (G_IS_NOTIFICATION (notification));
+
+  if (notification->sound)
+    g_clear_pointer (&notification->sound, g_variant_unref);
+
+  if (bytes == NULL)
+    return;
+
+  sound = g_variant_new ("(sv)", "bytes", g_variant_new_from_bytes (G_VARIANT_TYPE_BYTESTRING, bytes, TRUE));
+  notification->sound = g_variant_ref_sink (sound);
+}
+
+/**
+ * g_notification_set_silent:
+ * @notification: a #GNotification
+ * @silent: (nullable): Whether the notification does play a sound
+ *
+ * Sets whether a sound will be played when @notification is shown
+ *
+ * Since: 2.82
+ */
+void
+g_notification_set_silent (GNotification *notification,
+                           gboolean       silent)
+{
+  GVariant *sound;
+
+  g_return_if_fail (G_IS_NOTIFICATION (notification));
+
+  if (notification->sound)
+    g_clear_pointer (&notification->sound, g_variant_unref);
+
+  if (!silent)
+    return;
+
+  sound = g_variant_new_string ("silent");
+  notification->sound = g_variant_ref_sink (sound);
 }
 
 /*< private >
