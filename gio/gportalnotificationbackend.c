@@ -276,6 +276,43 @@ serialize_notification (GNotification *notification,
   return g_variant_builder_end (&builder);
 }
 
+
+typedef struct
+{
+  gchar *id;
+  GNotification *notification;
+} NotificationData;
+
+static void
+send_notification_cb (GObject      *source,
+                      GAsyncResult *result,
+                      gpointer      user_data)
+{
+  NotificationData *data = user_data;
+  g_autoptr(GVariant) reply;
+
+  reply = g_dbus_connection_call_with_unix_fd_list_finish (G_DBUS_CONNECTION (source), NULL, result, NULL);
+
+  // Fallback to version 1
+  if (!reply)
+    {
+      g_dbus_connection_call (G_DBUS_CONNECTION (source),
+                              "org.freedesktop.portal.Desktop",
+                              "/org/freedesktop/portal/desktop",
+                              "org.freedesktop.portal.Notification",
+                              "AddNotification",
+                              g_variant_new ("(s@a{sv})",
+                                             data->id,
+                                             g_notification_serialize (data->notification)),
+                              G_VARIANT_TYPE_UNIT,
+                              G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+    }
+
+  g_free (data->id);
+  g_object_unref (data->notification);
+  g_free (data);
+}
+
 static gboolean
 g_portal_notification_backend_is_supported (void)
 {
@@ -289,9 +326,13 @@ g_portal_notification_backend_send_notification (GNotificationBackend *backend,
 {
   g_autoptr(GUnixFDList) fd_list = NULL;
   g_autofree gchar *desktop_file_id = NULL;
+  NotificationData *data;
 
   fd_list = g_unix_fd_list_new ();
   desktop_file_id = g_strconcat (g_application_get_application_id (backend->application), ".desktop", NULL);
+  data = g_new0 (NotificationData, 1);
+  data->id = g_strdup (id);
+  data->notification = g_object_ref (notification);
 
   g_dbus_connection_call_with_unix_fd_list (backend->dbus_connection,
                                             "org.freedesktop.portal.Desktop",
@@ -304,7 +345,9 @@ g_portal_notification_backend_send_notification (GNotificationBackend *backend,
                                             G_VARIANT_TYPE_UNIT,
                                             G_DBUS_CALL_FLAGS_NONE, -1,
                                             fd_list,
-                                            NULL, NULL, NULL);
+                                            NULL,
+                                            send_notification_cb,
+                                            data);
 }
 
 static void
