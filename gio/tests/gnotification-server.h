@@ -32,7 +32,7 @@ typedef struct _GNotificationServer GNotificationServer;
 
 GType                   g_notification_server_get_type                  (void);
 
-GNotificationServer *   g_notification_server_new                       (void);
+GNotificationServer *   g_notification_server_new                       (const gchar *backend_name);
 
 void                    g_notification_server_stop                      (GNotificationServer *server);
 
