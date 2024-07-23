@@ -3243,6 +3243,7 @@ launch_uris_with_dbus (GDesktopAppInfo    *info,
       g_variant_builder_close (&builder);
     }
 
+  g_print ("Is this used\n");
   platform_data = g_desktop_app_info_make_platform_data (info, uris, launch_context);
 
   g_variant_builder_add_value (&builder, platform_data);
