@@ -177,6 +177,7 @@ response_received (GDBusConnection *connection,
   GTask *task = user_data;
   guint32 response;
   guint signal_id;
+  g_print ("Got response");
 
   signal_id = GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (task), "signal-id"));
   g_dbus_connection_signal_unsubscribe (connection, signal_id);
@@ -215,6 +216,7 @@ open_call_done (GObject      *source,
   const char *handle;
   guint signal_id;
 
+  g_print ("done open call\n");
   connection = g_dbus_proxy_get_connection (G_DBUS_PROXY (openuri));
   open_file = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (task), "open-file"));
 
@@ -232,8 +234,10 @@ open_call_done (GObject      *source,
     }
 
   handle = (const char *)g_object_get_data (G_OBJECT (task), "handle");
+  g_print ("Hanlde %s path %s\n", handle, path);
   if (g_strcmp0 (handle, path) != 0)
     {
+      g_print ("The path != handle");
       signal_id = GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (task), "signal-id"));
       g_dbus_connection_signal_unsubscribe (connection, signal_id);
 
@@ -275,6 +279,7 @@ g_openuri_portal_open_file_async (GFile               *file,
 
   connection = g_dbus_proxy_get_connection (G_DBUS_PROXY (openuri));
 
+  g_print ("Should subscripbe\n");
   if (callback)
     {
       GVariantBuilder opt_builder;
@@ -293,6 +298,8 @@ g_openuri_portal_open_file_async (GFile               *file,
       handle = g_strdup_printf ("/org/freedesktop/portal/desktop/request/%s/%s", sender, token);
       g_object_set_data_full (G_OBJECT (task), "handle", handle, g_free);
       g_free (sender);
+
+  g_print ("Have callback %s\n", handle);
 
       signal_id = g_dbus_connection_signal_subscribe (connection,
                                                       "org.freedesktop.portal.Desktop",

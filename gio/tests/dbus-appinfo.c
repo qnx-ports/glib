@@ -230,7 +230,7 @@ test_application_before_emit (GApplication *application,
 
   g_assert (!saw_startup_id);
 
-
+  g_print ("Run before emit %s\n", g_variant_print (platform_data, TRUE));
   const gchar *startup_id_keys[] = {
     "desktop-startup-id",
     "activation-token",
@@ -466,13 +466,107 @@ test_flatpak_missing_doc_export (void)
   g_free (desktop_file);
 }
 
+static void
+on_flatpak_launch_default_for_uri_finish (GObject *object,
+                                          GAsyncResult *result,
+                                          gpointer user_data)
+{
+  GApplication *app = user_data;
+  GError *error = NULL;
+
+  g_app_info_launch_default_for_uri_finish (result, &error);
+  g_assert_no_error (error);
+
+  g_application_release (app);
+}
+
+static void
+on_flatpak_launch_default_for_uri_async_activate (GApplication *app,
+                                                  gpointer user_data)
+{
+  GAppLaunchContext *ctx;
+  GDesktopAppInfo *flatpak_appinfo = user_data;
+  char *uri;
+
+  /* The app will be released in on_flatpak_launch_default_for_uri_finish */
+  g_application_hold (app);
+  /*
+
+  uri = g_filename_to_uri (g_desktop_app_info_get_filename (flatpak_appinfo), NULL, NULL);
+  g_assert_nonnull (uri);
+
+  */
+  ctx = g_object_new (test_app_launch_context_get_type (), NULL);
+  g_print ("Launch >>>>\n");
+  uri = "https://something";
+  g_app_info_launch_default_for_uri_async (uri, ctx,
+                                           NULL, on_flatpak_launch_default_for_uri_finish, app);
+  g_object_unref (ctx);
+//  g_free (uri);
+}
+
+static void
+on_flatpak_launch_default_for_uri_async_open (GApplication  *app,
+                                              GFile        **files,
+                                              gint           n_files,
+                                              const char    *hint)
+{
+  GFile *f;
+
+  g_assert_cmpint (n_files, ==, 1);
+  g_test_message ("on_flatpak_open received file '%s'", g_file_peek_path (files[0]));
+
+  /* The file has been exported via the document portal */
+  f = g_file_new_for_uri ("unsupported-xxxx:///document-portal/document-id/org.gtk.test.dbusappinfo.flatpak.desktop");
+  g_assert_true (g_file_equal (files[0], f));
+  g_object_unref (f);
+}
+
+static void
+test_flatpak_launch_default_for_uri_async (void)
+{
+  const gchar *argv[] = { "myapp", NULL };
+  gchar *desktop_file = NULL;
+  GError *error = NULL;
+  GDesktopAppInfo *flatpak_appinfo;
+  GApplication *app;
+  int status;
+
+  g_test_summary ("Test that launch default for uri async gets the correct startup-id/activation token.");
+
+  desktop_file = g_test_build_filename (G_TEST_DIST,
+                                        "org.gtk.test.dbusappinfo.flatpak.desktop",
+                                        NULL);
+  flatpak_appinfo = g_desktop_app_info_new_from_filename (desktop_file);
+  //g_assert_nonnull (flatpak_appinfo);
+  g_free (desktop_file);
+
+  //g_app_info_set_as_default_for_extension (G_APP_INFO (flatpak_appinfo), "desktop", &error);
+  g_assert_no_error (error);
+
+  app = test_application_new ("org.gtk.test.dbusappinfo.flatpak",
+                              G_APPLICATION_HANDLES_OPEN);
+  g_signal_connect (app, "activate", G_CALLBACK (on_flatpak_launch_default_for_uri_async_activate),
+                    flatpak_appinfo);
+  g_signal_connect (app, "open", G_CALLBACK (on_flatpak_launch_default_for_uri_async_open), NULL);
+
+  status = g_application_run (app, 1, (gchar **) argv);
+  g_assert_cmpint (status, ==, 0);
+  g_assert_true (requested_startup_id);
+  g_assert_true (saw_startup_id);
+
+  g_object_unref (app);
+  g_object_unref (flatpak_appinfo);
+}
+
 int
 main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
 
   //g_test_add_func ("/appinfo/dbusappinfo", test_dbus_appinfo);
-  g_test_add_func ("/appinfo/flatpak-doc-export", test_flatpak_doc_export);
+  //g_test_add_func ("/appinfo/flatpak-doc-export", test_flatpak_doc_export);
+  g_test_add_func ("/appinfo/flatpak-launch-default-for-uri-async", test_flatpak_launch_default_for_uri_async);
   //g_test_add_func ("/appinfo/flatpak-missing-doc-export", test_flatpak_missing_doc_export);
 
   return session_bus_run ();

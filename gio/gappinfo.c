@@ -1261,9 +1261,11 @@ launch_default_for_uri_portal_open_uri_cb (GObject      *object,
   GTask *task = G_TASK (user_data);
   GError *error = NULL;
 
-  if (g_openuri_portal_open_file_finish (result, &error))
+  g_print ("Finish portal\n");
+  if (g_openuri_portal_open_file_finish (result, &error)) {
     g_task_return_boolean (task, TRUE);
-  else
+    g_print ("Success\n");
+  } else
     g_task_return_error (task, g_steal_pointer (&error));
   g_object_unref (task);
 }
@@ -1276,14 +1278,16 @@ launch_default_for_uri_portal_open_uri (GTask *task, GError *error)
   LaunchDefaultForUriData *data = g_task_get_task_data (task);
   GCancellable *cancellable = g_task_get_cancellable (task);
 
+  g_print ("Call here\n");
   if (glib_should_use_portal ())
     {
       GFile *file;
       const char *parent_window = NULL;
       char *startup_id = NULL;
+      g_print ("Use portal here\n");
 
       /* Reset any error previously set by launch_default_for_uri */
-      g_error_free (error);
+      g_clear_error (&error);
 
       file = g_file_new_for_uri (data->uri);
 
@@ -1303,6 +1307,7 @@ launch_default_for_uri_portal_open_uri (GTask *task, GError *error)
           g_list_free (file_list);
         }
 
+      g_print ("Call the portal\n");
       g_openuri_portal_open_file_async (file,
                                         parent_window,
                                         startup_id,
@@ -1329,8 +1334,10 @@ launch_default_for_uri_launch_uris_cb (GObject      *object,
   GTask *task = G_TASK (user_data);
   GError *error = NULL;
 
+  g_print ("Portal or done?\n");
   if (g_app_info_launch_uris_finish (app_info, result, &error))
     {
+      g_print ("Is done\n");
       g_task_return_boolean (task, TRUE);
       g_object_unref (task);
     }
@@ -1367,7 +1374,7 @@ launch_default_for_uri_default_handler_cb (GObject      *object,
   GAppInfo *app_info = NULL;
   GError *error = NULL;
 
-  app_info = g_file_query_default_handler_finish (file, result, &error);
+  //app_info = g_file_query_default_handler_finish (file, result, &error);
   if (app_info)
     launch_default_for_uri_launch_uris (g_steal_pointer (&task), g_steal_pointer (&app_info));
   else

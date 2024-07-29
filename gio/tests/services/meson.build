@@ -1,5 +1,6 @@
 dbus_service_files = [
   'org.freedesktop.portal.Documents.service',
+  'org.freedesktop.portal.Desktop.service',
   'org.gtk.GDBus.FakeService.service'
 ]
 
