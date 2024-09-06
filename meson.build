@@ -2214,7 +2214,13 @@ endif
 subproject('gvdb')
 gvdb_dep = dependency('gvdb')
 
-libm = cc.find_library('m', required : false)
+if cc.has_define('__QNX__')
+  libm = cc.find_library('libm', required : true, dirs : [meson.get_external_property('sys_lib_dir')])
+  libsocket_dep = cc.find_library('libsocket', required : true, dirs : [meson.get_external_property('sys_lib_dir')])
+  atomic_dep = cc.find_library('libatomic', required : true, dirs : [meson.get_external_property('atomic_lib_dir')])
+else
+  libm = cc.find_library('m', required : false)
+endif
 libffi_dep = dependency('libffi', version : '>= 3.0.0')
 
 libz_dep = dependency('zlib')
