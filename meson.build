@@ -2216,8 +2216,7 @@ gvdb_dep = dependency('gvdb')
 
 if cc.has_define('__QNX__')
   libm = cc.find_library('libm', required : true, dirs : [meson.get_external_property('sys_lib_dir')])
-  libsocket_dep = cc.find_library('libsocket', required : true, dirs : [meson.get_external_property('sys_lib_dir')])
-  atomic_dep = cc.find_library('libatomic', required : true, dirs : [meson.get_external_property('atomic_lib_dir')])
+  add_project_arguments('-latomic', language: 'c')
 else
   libm = cc.find_library('m', required : false)
 endif
