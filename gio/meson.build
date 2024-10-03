@@ -58,7 +58,7 @@ if host_system != 'windows'
       network_args += [ '-lbind' ]
     elif cc.links(res_query_test, args : '-lsocket', name : 'res_query() in -lsocket')
       if cc.has_define('__QNX__')
-        network_libs += [ cc.find_library('socket', dirs : [meson.get_external_property('socket_lib_dir')]) ]
+        network_libs += [ cc.find_library('socket', dirs : [meson.get_external_property('sys_lib_dir')]) ]
       else
         network_libs += [ cc.find_library('socket') ]
       endif
@@ -77,7 +77,7 @@ if host_system != 'windows'
   if not cc.links(socket_test, name : 'socket()')
     if cc.links(socket_test, args : '-lsocket', name : 'socket() in -lsocket')
       if cc.has_define('__QNX__')
-        network_libs += [ cc.find_library('socket', dirs : [meson.get_external_property('socket_lib_dir')]) ]
+        network_libs += [ cc.find_library('socket', dirs : [meson.get_external_property('sys_lib_dir')]) ]
       else
         network_libs += [ cc.find_library('socket') ]
       endif
