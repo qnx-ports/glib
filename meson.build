@@ -2217,10 +2217,12 @@ gvdb_dep = dependency('gvdb')
 if cc.has_define('__QNX__')
   libm = cc.find_library('libm', required : true, dirs : [meson.get_external_property('sys_lib_dir')])
   add_project_arguments('-latomic', language: 'c')
+  libffi_dep = cc.find_library('libffi', required: true, dirs : [meson.get_external_property('sys_lib_dir')])
 else
   libm = cc.find_library('m', required : false)
+  libffi_dep = dependency('libffi', version : '>= 3.0.0')
 endif
-libffi_dep = dependency('libffi', version : '>= 3.0.0')
+
 
 libz_dep = dependency('zlib')
 
