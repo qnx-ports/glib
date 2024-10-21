@@ -1749,6 +1749,25 @@ _g_unix_mount_points_get_from_file (const char *table_path,
   return NULL;
 }
 
+/* QNX {{{2 */
+#elif defined (HAVE_QNX)
+#warning "g_get_mount_table() not implemented on QNX!"
+static GUnixMountPoint **
+_g_unix_mount_points_get_from_file (const char *table_path,
+                                    uint64_t   *time_read_out,
+                                    size_t     *n_points_out)
+{
+  // TODO
+  return NULL;
+}
+
+static GList *
+_g_get_unix_mount_points (void)
+{
+  // TODO
+  return NULL;
+}
+
 /* Common code {{{2 */
 #else
 #error No g_get_mount_table() implementation for system
