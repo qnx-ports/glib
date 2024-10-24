@@ -101,6 +101,7 @@
 #endif
 #endif
 
+#include "qnx700compat.h"
 
 static void g_local_file_file_iface_init (GFileIface *iface);
 
