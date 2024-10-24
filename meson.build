@@ -2254,7 +2254,7 @@ libatomic_test_code = '''
   }'''
 atomic_dep = []
 if cc.links(libatomic_test_code, args : '-latomic', name : 'check for -latomic')
-  atomic_dep = cc.find_library('atomic')
+  atomic_dep = cc.find_library('atomic', required: false)
 endif
 
 # First check in libc, fallback to libintl, and as last chance build
