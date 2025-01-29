@@ -519,6 +519,13 @@ if cc.get_id() == 'gcc' or cc.get_id() == 'clang'
     '-Werror=unused-result',
   ]
 
+if host_system == 'qnx'
+  warning_common_args = warning_common_args + [
+    '-Wno-nonnull',
+    '-Wno-format-nonliteral'
+  ]
+endif
+
   warning_c_args = warning_common_args + [
     '-Wstrict-prototypes',
     # Due to pervasive use of things like GPOINTER_TO_UINT(), we do not support
